@@ -3,7 +3,6 @@ node_modules
 *.log
 .idea
 .env.local
-dist
 .next
 out
 .DS_Store
