@@ -1,4 +1,3 @@
-import mutate, { DeclarativeMutation } from "dom-mutator";
 import type {
   Context,
   Experiment,
@@ -9,16 +8,9 @@ import type {
   FeatureResultSource,
   Attributes,
   WidenPrimitives,
-  RealtimeUsageData,
-  LoadFeaturesOptions,
-  RefreshFeaturesOptions,
-  ApiHost,
-  ClientKey,
   VariationMeta,
   Filter,
   VariationRange,
-  AutoExperimentVariation,
-  AutoExperiment,
 } from "./types/growthbook";
 import type { ConditionInterface } from "./types/mongrule";
 import {
@@ -31,10 +23,8 @@ import {
   inNamespace,
   inRange,
   isURLTargeted,
-  decrypt,
 } from "./util";
 import { evalCondition } from "./mongrule";
-import { refreshFeatures, subscribe, unsubscribe } from "./feature-repository";
 
 const isBrowser =
   typeof window !== "undefined" && typeof document !== "undefined";
@@ -55,8 +45,6 @@ export class GrowthBook<
   private _trackedExperiments: Set<unknown>;
   private _trackedFeatures: Record<string, string>;
   private _subscriptions: Set<SubscriptionFunction>;
-  private _rtQueue: RealtimeUsageData[];
-  private _rtTimer: number;
   private _assigned: Map<
     string,
     {
@@ -84,8 +72,6 @@ export class GrowthBook<
     this._trackedFeatures = {};
     this.debug = false;
     this._subscriptions = new Set();
-    this._rtQueue = [];
-    this._rtTimer = 0;
     this.ready = false;
     this._assigned = new Map();
     this._forcedFeatureValues = new Map();
@@ -103,50 +89,7 @@ export class GrowthBook<
 
     if (context.experiments) {
       this.ready = true;
-      this._updateAllAutoExperiments();
     }
-
-    if (context.clientKey) {
-      this._refresh({}, true, false);
-    }
-  }
-
-  public async loadFeatures(options?: LoadFeaturesOptions): Promise<void> {
-    await this._refresh(options, true, true);
-    if (options && options.autoRefresh) {
-      subscribe(this);
-    }
-  }
-
-  public async refreshFeatures(
-    options?: RefreshFeaturesOptions
-  ): Promise<void> {
-    await this._refresh(options, false, true);
-  }
-
-  public getApiInfo(): [ApiHost, ClientKey] {
-    return [
-      (this._ctx.apiHost || "https://cdn.growthbook.io").replace(/\/*$/, ""),
-      this._ctx.clientKey || "",
-    ];
-  }
-
-  private async _refresh(
-    options?: RefreshFeaturesOptions,
-    allowStale?: boolean,
-    updateInstance?: boolean
-  ) {
-    options = options || {};
-    if (!this._ctx.clientKey) {
-      throw new Error("Missing clientKey");
-    }
-    await refreshFeatures(
-      this,
-      options.timeout,
-      options.skipCache || this._ctx.enableDevMode,
-      allowStale,
-      updateInstance
-    );
   }
 
   private _render() {
@@ -161,55 +104,18 @@ export class GrowthBook<
     this._render();
   }
 
-  public async setEncryptedFeatures(
-    encryptedString: string,
-    decryptionKey?: string,
-    subtle?: SubtleCrypto
-  ): Promise<void> {
-    const featuresJSON = await decrypt(
-      encryptedString,
-      decryptionKey || this._ctx.decryptionKey,
-      subtle
-    );
-    this.setFeatures(
-      JSON.parse(featuresJSON) as Record<string, FeatureDefinition>
-    );
-  }
-
-  public setExperiments(experiments: AutoExperiment[]): void {
-    this._ctx.experiments = experiments;
-    this.ready = true;
-    this._updateAllAutoExperiments();
-  }
-
-  public async setEncryptedExperiments(
-    encryptedString: string,
-    decryptionKey?: string,
-    subtle?: SubtleCrypto
-  ): Promise<void> {
-    const experimentsJSON = await decrypt(
-      encryptedString,
-      decryptionKey || this._ctx.decryptionKey,
-      subtle
-    );
-    this.setExperiments(JSON.parse(experimentsJSON) as AutoExperiment[]);
-  }
-
   public setAttributes(attributes: Attributes) {
     this._ctx.attributes = attributes;
     this._render();
-    this._updateAllAutoExperiments();
   }
 
   public setAttributeOverrides(overrides: Attributes) {
     this._attributeOverrides = overrides;
     this._render();
-    this._updateAllAutoExperiments();
   }
   public setForcedVariations(vars: Record<string, number>) {
     this._ctx.forcedVariations = vars || {};
     this._render();
-    this._updateAllAutoExperiments();
   }
   // eslint-disable-next-line
   public setForcedFeatures(map: Map<string, any>) {
@@ -219,7 +125,6 @@ export class GrowthBook<
 
   public setURL(url: string) {
     this._ctx.url = url;
-    this._updateAllAutoExperiments(true);
   }
 
   public getAttributes() {
@@ -252,11 +157,6 @@ export class GrowthBook<
     this._assigned.clear();
     this._trackedExperiments.clear();
     this._trackedFeatures = {};
-    this._rtQueue = [];
-    if (this._rtTimer) {
-      clearTimeout(this._rtTimer);
-    }
-    unsubscribe(this);
 
     if (isBrowser && window._growthbook === this) {
       delete window._growthbook;
@@ -283,83 +183,6 @@ export class GrowthBook<
     const result = this._run(experiment, null);
     this._fireSubscriptions(experiment, result);
     return result;
-  }
-
-  public triggerExperiment(key: string) {
-    if (!this._ctx.experiments) return null;
-    const exp = this._ctx.experiments.find((exp) => exp.key === key);
-    if (!exp || !exp.manual) return null;
-    return this._runAutoExperiment(exp, true);
-  }
-
-  private _runAutoExperiment(
-    experiment: AutoExperiment,
-    forceManual?: boolean,
-    forceRerun?: boolean
-  ) {
-    const key = experiment.key;
-    const existing = this._activeAutoExperiments.get(key);
-
-    // If this is a manual experiment and it's not already running, skip
-    if (experiment.manual && !forceManual && !existing) return null;
-
-    // Run the experiment
-    const result = this.run(experiment);
-
-    // A hash to quickly tell if the assigned value changed
-    const valueHash = JSON.stringify(result.value);
-
-    // If the changes are already active, no need to re-apply them
-    if (
-      !forceRerun &&
-      result.inExperiment &&
-      existing &&
-      existing.valueHash === valueHash
-    ) {
-      return result;
-    }
-
-    // Undo any existing changes
-    if (existing) this._undoActiveAutoExperiment(key);
-
-    // Apply new changes
-    if (result.inExperiment) {
-      const undo = this._applyDOMChanges(result.value);
-      if (undo) {
-        this._activeAutoExperiments.set(experiment.key, {
-          undo,
-          valueHash,
-        });
-      }
-    }
-
-    return result;
-  }
-
-  private _undoActiveAutoExperiment(key: string) {
-    const exp = this._activeAutoExperiments.get(key);
-    if (exp) {
-      exp.undo();
-      this._activeAutoExperiments.delete(key);
-    }
-  }
-
-  private _updateAllAutoExperiments(forceRerun?: boolean) {
-    const experiments = this._ctx.experiments || [];
-
-    // Stop any experiments that are no longer defined
-    const keys = new Set(experiments.map((e) => e.key));
-    this._activeAutoExperiments.forEach((v, k) => {
-      if (!keys.has(k)) {
-        v.undo();
-        this._activeAutoExperiments.delete(k);
-      }
-    });
-
-    // Re-run all new/updated experiments
-    experiments.forEach((exp) => {
-      this._runAutoExperiment(exp, false, forceRerun);
-    });
   }
 
   private _fireSubscriptions<T>(experiment: Experiment<T>, result: Result<T>) {
@@ -404,36 +227,6 @@ export class GrowthBook<
 
     // In browser environments, queue up feature usage to be tracked in batches
     if (!isBrowser || !window.fetch) return;
-    this._rtQueue.push({
-      key,
-      on: res.on,
-    });
-    if (!this._rtTimer) {
-      this._rtTimer = window.setTimeout(() => {
-        // Reset the queue
-        this._rtTimer = 0;
-        const q = [...this._rtQueue];
-        this._rtQueue = [];
-
-        // Skip logging if a real-time usage key is not configured
-        if (!this._ctx.realtimeKey) return;
-
-        window
-          .fetch(
-            `https://rt.growthbook.io/?key=${
-              this._ctx.realtimeKey
-            }&events=${encodeURIComponent(JSON.stringify(q))}`,
-
-            {
-              cache: "no-cache",
-              mode: "no-cors",
-            }
-          )
-          .catch(() => {
-            // TODO: retry in case of network errors?
-          });
-      }, this._ctx.realtimeInterval || 2000);
-    }
   }
 
   private _getFeatureResult<T>(
@@ -1004,30 +797,5 @@ export class GrowthBook<
       if (groups[expGroups[i]]) return true;
     }
     return false;
-  }
-
-  private _applyDOMChanges(changes: AutoExperimentVariation) {
-    if (!isBrowser) return;
-    const undo: (() => void)[] = [];
-    if (changes.css) {
-      const s = document.createElement("style");
-      s.innerHTML = changes.css;
-      document.head.appendChild(s);
-      undo.push(() => s.remove());
-    }
-    if (changes.js) {
-      const script = document.createElement("script");
-      script.innerHTML = changes.js;
-      document.body.appendChild(script);
-      undo.push(() => script.remove());
-    }
-    if (changes.domMutations) {
-      changes.domMutations.forEach((mutation) => {
-        undo.push(mutate.declarative(mutation as DeclarativeMutation).revert);
-      });
-    }
-    return () => {
-      undo.forEach((fn) => fn());
-    };
   }
 }
