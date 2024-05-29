@@ -1,4 +1,4 @@
-import type { Context, Experiment, FeatureResult, Result, SubscriptionFunction, FeatureDefinition, Attributes, WidenPrimitives } from "./types/growthbook";
+import type { Context, Experiment, FeatureResult, Result, SubscriptionFunction, FeatureDefinition, Attributes, WidenPrimitives, ApiHost, ClientKey } from "./types/growthbook";
 export declare class GrowthBook<AppFeatures extends Record<string, any> = Record<string, any>> {
     private context;
     debug: boolean;
@@ -13,6 +13,7 @@ export declare class GrowthBook<AppFeatures extends Record<string, any> = Record
     private _attributeOverrides;
     private _activeAutoExperiments;
     constructor(context?: Context);
+    getApiInfo(): [ApiHost, ClientKey];
     private _render;
     setFeatures(features: Record<string, FeatureDefinition>): void;
     setAttributes(attributes: Attributes): void;
