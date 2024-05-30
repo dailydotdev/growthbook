@@ -8,6 +8,8 @@ import type {
   FeatureResultSource,
   Attributes,
   WidenPrimitives,
+  ApiHost,
+  ClientKey,
   VariationMeta,
   Filter,
   VariationRange,
@@ -90,6 +92,13 @@ export class GrowthBook<
     if (context.experiments) {
       this.ready = true;
     }
+  }
+
+  public getApiInfo(): [ApiHost, ClientKey] {
+    return [
+      (this._ctx.apiHost || "https://cdn.growthbook.io").replace(/\/*$/, ""),
+      this._ctx.clientKey || "",
+    ];
   }
 
   private _render() {

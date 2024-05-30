@@ -431,6 +431,9 @@ class GrowthBook {
       this.ready = true;
     }
   }
+  getApiInfo() {
+    return [(this._ctx.apiHost || "https://cdn.growthbook.io").replace(/\/*$/, ""), this._ctx.clientKey || ""];
+  }
   _render() {
     if (this._renderer) {
       this._renderer();
