@@ -28,17 +28,9 @@ export type {
 } from "./GrowthBookReact";
 
 export {
-//   FeatureString,
-//   FeaturesReady,
   GrowthBookContext,
   GrowthBookProvider,
-//   IfFeatureEnabled,
-//   useExperiment,
-//   useFeature,
   useGrowthBook,
-//   withRunExperiment,
-//   getGrowthBookSSRData,
-//   useGrowthBookSSR,
   useFeatureIsOn,
   useFeatureValue,
 } from "./GrowthBookReact";
