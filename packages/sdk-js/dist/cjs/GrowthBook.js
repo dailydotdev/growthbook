@@ -594,6 +594,10 @@ class GrowthBook {
     }
     return false;
   }
+  getForcedFeatures() {
+    // eslint-disable-next-line
+    return this._forcedFeatureValues || new Map();
+  }
 }
 exports.GrowthBook = GrowthBook;
 //# sourceMappingURL=GrowthBook.js.map

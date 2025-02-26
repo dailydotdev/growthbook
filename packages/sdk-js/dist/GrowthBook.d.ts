@@ -59,5 +59,6 @@ export declare class GrowthBook<AppFeatures extends Record<string, any> = Record
     private _getContextUrl;
     private _urlIsValid;
     private _hasGroupOverlap;
+    getForcedFeatures(): Map<string, any>;
 }
 //# sourceMappingURL=GrowthBook.d.ts.map
