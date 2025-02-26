@@ -156,6 +156,7 @@ export interface Context {
   onFeatureUsage?: (key: string, result: FeatureResult<any>) => void;
   realtimeKey?: string;
   realtimeInterval?: number;
+  cacheKeyAttributes?: (keyof Attributes)[];
   /* @deprecated */
   user?: {
     id?: string;
@@ -169,6 +170,7 @@ export interface Context {
   apiHost?: string;
   clientKey?: string;
   decryptionKey?: string;
+  remoteEval?: boolean;
 }
 
 export type SubscriptionFunction = (

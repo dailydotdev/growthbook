@@ -130,6 +130,7 @@ export interface Context {
     onFeatureUsage?: (key: string, result: FeatureResult<any>) => void;
     realtimeKey?: string;
     realtimeInterval?: number;
+    cacheKeyAttributes?: (keyof Attributes)[];
     user?: {
         id?: string;
         anonId?: string;
@@ -140,6 +141,7 @@ export interface Context {
     apiHost?: string;
     clientKey?: string;
     decryptionKey?: string;
+    remoteEval?: boolean;
 }
 export declare type SubscriptionFunction = (experiment: Experiment<any>, result: Result<any>) => void;
 export declare type VariationRange = [number, number];
