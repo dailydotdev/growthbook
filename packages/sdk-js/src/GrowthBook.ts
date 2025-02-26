@@ -807,4 +807,9 @@ export class GrowthBook<
     }
     return false;
   }
+
+  public getForcedFeatures() {
+    // eslint-disable-next-line
+    return this._forcedFeatureValues || new Map<string, any>();
+  }
 }
