@@ -61,5 +61,6 @@ export declare class GrowthBook<AppFeatures extends Record<string, any> = Record
     private _hasGroupOverlap;
     getForcedFeatures(): Map<string, any>;
     getForcedVariations(): Record<string, number>;
+    isRemoteEval(): boolean;
 }
 //# sourceMappingURL=GrowthBook.d.ts.map

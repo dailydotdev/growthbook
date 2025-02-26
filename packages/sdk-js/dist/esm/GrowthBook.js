@@ -24,6 +24,27 @@ export class GrowthBook {
     this._forcedFeatureValues = new Map();
     this._attributeOverrides = {};
     this._activeAutoExperiments = new Map();
+    if (context.remoteEval) {
+      if (context.decryptionKey) {
+        throw new Error("Encryption is not available for remoteEval");
+      }
+      if (!context.clientKey) {
+        throw new Error("Missing clientKey");
+      }
+      let isGbHost = false;
+      try {
+        isGbHost = !!new URL(context.apiHost || "").hostname.match(/growthbook\.io$/i);
+      } catch (e) {
+        // ignore invalid URLs
+      }
+      if (isGbHost) {
+        throw new Error("Cannot use remoteEval on GrowthBook Cloud");
+      }
+    } else {
+      if (context.cacheKeyAttributes) {
+        throw new Error("cacheKeyAttributes are only used for remoteEval");
+      }
+    }
     if (context.features) {
       this.ready = true;
     }
@@ -594,6 +615,9 @@ export class GrowthBook {
   }
   getForcedVariations() {
     return this._ctx.forcedVariations || {};
+  }
+  isRemoteEval() {
+    return this._ctx.remoteEval || false;
   }
 }
 //# sourceMappingURL=GrowthBook.js.map

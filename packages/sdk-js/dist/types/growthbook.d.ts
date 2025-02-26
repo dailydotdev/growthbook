@@ -130,6 +130,7 @@ export interface Context {
     onFeatureUsage?: (key: string, result: FeatureResult<any>) => void;
     realtimeKey?: string;
     realtimeInterval?: number;
+    cacheKeyAttributes?: (keyof Attributes)[];
     user?: {
         id?: string;
         anonId?: string;

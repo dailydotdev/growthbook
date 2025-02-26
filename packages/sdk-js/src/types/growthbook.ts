@@ -156,6 +156,7 @@ export interface Context {
   onFeatureUsage?: (key: string, result: FeatureResult<any>) => void;
   realtimeKey?: string;
   realtimeInterval?: number;
+  cacheKeyAttributes?: (keyof Attributes)[];
   /* @deprecated */
   user?: {
     id?: string;
