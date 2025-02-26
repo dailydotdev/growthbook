@@ -897,6 +897,9 @@ var growthbook = (function (exports) {
       // eslint-disable-next-line
       return this._forcedFeatureValues || new Map();
     }
+    getForcedVariations() {
+      return this._ctx.forcedVariations || {};
+    }
   }
 
   exports.GrowthBook = GrowthBook;

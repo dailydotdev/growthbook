@@ -169,6 +169,7 @@ export interface Context {
   apiHost?: string;
   clientKey?: string;
   decryptionKey?: string;
+  remoteEval?: boolean;
 }
 
 export type SubscriptionFunction = (

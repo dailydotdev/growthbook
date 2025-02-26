@@ -812,4 +812,8 @@ export class GrowthBook<
     // eslint-disable-next-line
     return this._forcedFeatureValues || new Map<string, any>();
   }
+
+  public getForcedVariations() {
+    return this._ctx.forcedVariations || {};
+  }
 }

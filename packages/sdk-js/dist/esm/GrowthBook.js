@@ -592,5 +592,8 @@ export class GrowthBook {
     // eslint-disable-next-line
     return this._forcedFeatureValues || new Map();
   }
+  getForcedVariations() {
+    return this._ctx.forcedVariations || {};
+  }
 }
 //# sourceMappingURL=GrowthBook.js.map
